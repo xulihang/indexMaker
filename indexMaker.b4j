@@ -1,0 +1,173 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=main.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=jcore
+Library2=jfx
+Library3=javaobject
+Library4=jshell
+Library5=apachestringutilsb4j
+NumberOfFiles=1
+NumberOfLibraries=5
+NumberOfModules=0
+Version=6.01
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+
+	Private Button1 As Button
+
+	Private Button3 As Button
+	Private Label2 As Label
+
+
+
+	Private TextArea1 As TextArea
+	Private TextField1 As TextField
+	Private TextField2 As TextField
+	Private TextArea2 As TextArea
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	TextArea1.Text=""
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+
+Sub Button3_MouseClicked (EventData As MouseEvent)
+	Dim result As String
+	Dim pagesMap As Map
+	pagesMap.Initialize
+    For i=1 To TextField1.text-TextField2.Text
+		Dim content As String
+		content=removeLines(File.ReadString(File.Combine(File.DirApp,"temp"),i&".txt"))
+		pagesMap.Put(i,content)
+
+    Next
+	Log(pagesMap)
+    Dim wordsMap As Map
+	wordsMap.Initialize
+	Dim wordsList As List
+	wordsList.Initialize
+	wordsList.AddAll(Regex.Split(CRLF,TextArea1.Text))
+	For Each word As String In wordsList
+		Dim emptyList As List
+		emptyList.Initialize
+		'emptyList.Add("placeholder")
+		wordsMap.Put(word,emptyList)
+	Next
+	Log(wordsMap)
+	
+	For Each word As String In wordsMap.Keys
+		For Each key In pagesMap.Keys
+			Dim content As String
+
+			content=pagesMap.Get(key)
+
+			If content.ToLowerCase.Contains(word.ToLowerCase) Then
+				Log(content)
+				Dim list1 As List
+				list1.Initialize
+				list1=wordsMap.Get(word)
+				list1.Add(key)
+				Log(wordsMap.Get(word))
+				Log(list1)
+			End If
+		Next
+		Dim pageresult As String
+		Dim numslist As List
+		numslist=wordsMap.Get(word)
+		For Each pagenum As String In numslist
+			pageresult=pageresult&" "&pagenum
+		Next
+		result=result&word&" "&pageresult&CRLF
+	Next
+	Log(result)
+	TextArea2.Text=result
+End Sub
+
+Sub Button1_MouseClicked (EventData As MouseEvent)
+	If TextField1.Text="" Then
+		fx.Msgbox(MainForm,"请先填写PDF文件页数","")
+		Return
+	End If
+	Dim path As String
+	Dim fc As FileChooser
+	fc.Initialize
+	fc.SetExtensionFilter("pdf",Array As String("*.pdf"))
+	path=fc.ShowOpen(MainForm)
+	If path="" Then
+		Return
+	End If
+	Label2.Text=path
+	File.Copy(path,"",File.Combine(File.DirApp,"temp"),"file.pdf")
+	TextArea2.Text="导出PDF为文字到临时文件夹中。。。"
+	For i=1 To TextField1.Text
+		Log(i)
+		Dim sh As Shell
+		sh.Initialize("sh3","java",Array As String("-jar","-Xmx1024m","pdfbox-app.jar","ExtractText", "-startPage",i,"-endPage",i,File.Combine(File.Combine(File.DirApp,"temp"),"file.pdf"),"temp/"&i&".txt"))
+		sh.WorkingDirectory = File.DirApp
+		sh.run(-1)
+		wait for sh3_ProcessCompleted (Success As Boolean, ExitCode As Int, StdOut As String, StdErr As String)
+		TextArea2.Text=TextArea2.Text&StdOut
+		If Success And ExitCode = 0 Then
+			Log("Success")
+			Log(StdOut)
+			TextArea2.Text="第"&i&"页导出完成，还剩"&(TextField1.Text-i)&"页"
+		Else
+			Log("Error: " & StdErr)
+			TextArea2.Text="导出失败"
+		End If
+	Next
+End Sub
+
+Sub removeLines(input As String) As String
+	Dim result As String
+	Dim list1 As List
+	list1.Initialize
+	list1.AddAll(Regex.Split(CRLF,input))
+	'Log(list1)
+	For Each line As String In list1
+		line=line.Trim
+		'Log(line)
+		If line="" Or line=" " Then
+			Continue
+		End If
+		If isSentenceEnd(line)=False Then
+			result=result&" "&line
+		Else
+			result=result&" "&line&CRLF
+		End If
+	Next
+
+	Dim list2 As List
+	list2.Initialize
+	list2.AddAll(Regex.Split(CRLF,result))
+	result=""
+	For Each line As String In list2
+		result=result&line.Trim&CRLF&CRLF
+	Next
+    Return result
+End Sub
+
+Sub isSentenceEnd(line As String) As Boolean
+	If line.EndsWith(".") Or line.EndsWith("!") Or line.EndsWith("?") Or line.EndsWith(";") Or line.EndsWith(Chr(34)) Then
+		Return True
+	Else
+		Return False
+	End If
+End Sub
