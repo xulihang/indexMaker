@@ -5,11 +5,9 @@ FileGroup1=Default Group
 Group=Default Group
 Library1=jcore
 Library2=jfx
-Library3=javaobject
-Library4=jshell
-Library5=apachestringutilsb4j
+Library3=jshell
 NumberOfFiles=1
-NumberOfLibraries=5
+NumberOfLibraries=3
 NumberOfModules=0
 Version=6.01
 @EndOfDesignText@
@@ -33,6 +31,8 @@ Sub Process_Globals
 	Private TextField1 As TextField
 	Private TextField2 As TextField
 	Private TextArea2 As TextArea
+	Private TextField3 As TextField
+	Private TextField4 As TextField
 End Sub
 
 Sub AppStart (Form1 As Form, Args() As String)
@@ -49,15 +49,25 @@ End Sub
 
 
 Sub Button3_MouseClicked (EventData As MouseEvent)
+	If TextField1.Text="" Or TextField2.Text="" Or TextField3.Text="" Or TextField4.Text="" Then
+		fx.Msgbox(MainForm,"请先填写上方的页数","")
+		Return
+	End If
 	Dim result As String
 	Dim pagesMap As Map
 	pagesMap.Initialize
-    For i=1 To TextField1.text-TextField2.Text
+
+	For i=TextField3.text To TextField4.text
+		log(i)
+		Dim pagenumber As Int
+		pagenumber=i-TextField2.Text
+		
 		Dim content As String
 		content=removeLines(File.ReadString(File.Combine(File.DirApp,"temp"),i&".txt"))
-		pagesMap.Put(i,content)
+		pagesMap.Put(pagenumber,content)
+	Next
 
-    Next
+
 	Log(pagesMap)
     Dim wordsMap As Map
 	wordsMap.Initialize
@@ -92,8 +102,12 @@ Sub Button3_MouseClicked (EventData As MouseEvent)
 		Dim numslist As List
 		numslist=wordsMap.Get(word)
 		For Each pagenum As String In numslist
-			pageresult=pageresult&" "&pagenum
+			pageresult=pageresult&","&pagenum
 		Next
+        If pageresult.StartsWith(",") Then
+			pageresult=pageresult.SubString(1)
+		End If
+		
 		result=result&word&" "&pageresult&CRLF
 	Next
 	Log(result)
@@ -141,6 +155,7 @@ Sub removeLines(input As String) As String
 	list1.Initialize
 	list1.AddAll(Regex.Split(CRLF,input))
 	'Log(list1)
+
 	For Each line As String In list1
 		line=line.Trim
 		'Log(line)
@@ -148,9 +163,9 @@ Sub removeLines(input As String) As String
 			Continue
 		End If
 		If isSentenceEnd(line)=False Then
-			result=result&" "&line
+			result=result&line
 		Else
-			result=result&" "&line&CRLF
+			result=result&line&CRLF
 		End If
 	Next
 
@@ -161,11 +176,12 @@ Sub removeLines(input As String) As String
 	For Each line As String In list2
 		result=result&line.Trim&CRLF&CRLF
 	Next
+
     Return result
 End Sub
 
 Sub isSentenceEnd(line As String) As Boolean
-	If line.EndsWith(".") Or line.EndsWith("!") Or line.EndsWith("?") Or line.EndsWith(";") Or line.EndsWith(Chr(34)) Then
+	If line.EndsWith(".") Or line.EndsWith("!") Or line.EndsWith("?") Or line.EndsWith(";") Or line.EndsWith(Chr(34)) Or line.EndsWith("。") Or line.EndsWith("，") Or line.EndsWith("！") Or line.EndsWith("？") Or line.EndsWith("；") Then
 		Return True
 	Else
 		Return False
